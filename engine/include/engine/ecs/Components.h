@@ -1,5 +1,7 @@
 #pragma once
 #include <glm/vec2.hpp>
+#include <string>
+#include <vector>
 #include "engine/render/Texture.h"
 
 namespace eng::ecs {
@@ -41,6 +43,23 @@ struct Sprite {
     int                layer    = 0;      // orden de dibujo
     float              width    = 1.0f;   // tamano en world units
     float              height   = 1.0f;   // tamano en world units
+};
+
+/// Clip de animacion: una secuencia de frames UV dentro de un sprite sheet.
+/// Cada frame es un Rect con las coordenadas UV de ese frame en la textura.
+struct AnimationClip {
+    std::string name;                 // "idle", "walk_down", etc.
+    std::vector<eng::Rect> frames;    // UVs de cada frame
+    float frameDuration = 0.15f;      // segundos por frame (~6 FPS)
+    bool loop = true;                 // repetir al terminar?
+};
+
+struct SpriteAnimator {
+    std::vector<AnimationClip> clips;
+    int currentClip = 0;
+    int currentFrame = 0;
+    float timer = 0.0f;
+    bool playing = true;
 };
 
 } // namespace eng::ecs

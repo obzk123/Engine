@@ -2,15 +2,14 @@
 #include "engine/ecs/Components.h"
 #include "engine/Input.h"
 #include "engine/Actions.h"
+#include <cmath>
 
 namespace eng::ecs::systems {
 
 void PlayerControlSystem(Registry& reg, float /*fixedDt*/) {
-    // Buscar player (simple por ahora): todas las entidades con PlayerTag + Velocity2D
     auto view = reg.view<PlayerTag, Velocity2D>();
 
-    // Movimiento en 2D tipo top-down
-    const float speed = 3.0f; // unidades por segundo
+    const float speed = 3.0f;
 
     for (auto [e, tag, vel] : view) {
         (void)tag;
@@ -20,10 +19,10 @@ void PlayerControlSystem(Registry& reg, float /*fixedDt*/) {
 
         if (eng::Input::actionDown(eng::Action::MoveLeft))  x -= 1.0f;
         if (eng::Input::actionDown(eng::Action::MoveRight)) x += 1.0f;
-        if (eng::Input::actionDown(eng::Action::MoveUp))    y -= 1.0f; // convención: up = -Y (pantalla)
+        if (eng::Input::actionDown(eng::Action::MoveUp))    y -= 1.0f;
         if (eng::Input::actionDown(eng::Action::MoveDown))  y += 1.0f;
 
-        // Normalizar diagonal para no correr más rápido en diagonal
+        // Normalizar diagonal
         const float len2 = x*x + y*y;
         if (len2 > 0.0f) {
             const float invLen = 1.0f / SDL_sqrtf(len2);
@@ -32,6 +31,31 @@ void PlayerControlSystem(Registry& reg, float /*fixedDt*/) {
         }
 
         vel.velocity = { x * speed, y * speed };
+
+        // ── Cambiar clip de animacion segun direccion ──
+        // Clips: 0=idle, 1=walk_down, 2=walk_up, 3=walk_side
+        if (reg.has<SpriteAnimator>(e)) {
+            auto& animator = reg.get<SpriteAnimator>(e);
+            int newClip = 0; // idle por defecto
+
+            if (len2 > 0.0f) {
+                // Hay movimiento — elegir clip segun la direccion predominante
+                if (std::abs(y) >= std::abs(x)) {
+                    // Movimiento vertical predominante
+                    newClip = (y > 0.0f) ? 1 : 2;  // down : up
+                } else {
+                    // Movimiento horizontal predominante
+                    newClip = 3; // walk_side
+                }
+            }
+
+            if (newClip != animator.currentClip) {
+                animator.currentClip  = newClip;
+                animator.currentFrame = 0;
+                animator.timer        = 0.0f;
+                animator.playing      = true;
+            }
+        }
     }
 }
 
