@@ -6,7 +6,7 @@
 namespace eng {
 class Renderer2D {
 public:
-    static Renderer2D& instance();
+    Renderer2D() = default;
 
     void init();
     void shutdown();
@@ -18,7 +18,6 @@ public:
     void flush();
 
 private:
-    Renderer2D() = default;
 
     struct Vertex {
         float x, y;

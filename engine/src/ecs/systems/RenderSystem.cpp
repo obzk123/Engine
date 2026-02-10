@@ -4,10 +4,7 @@
 
 #include <SDL.h>
 
-extern SDL_Window* g_window;
-
 namespace eng::ecs::systems {
-
 
 static float lerp(float a, float b, float t) { return a + (b - a) * t; }
 
@@ -15,16 +12,16 @@ static glm::vec2 lerpVec2(const glm::vec2& a, const glm::vec2& b, float t) {
     return { lerp(a.x, b.x, t), lerp(a.y, b.y, t) };
 }
 
-
 void RenderSystem(Registry& reg, float alpha) {
-    // Obtener tamaño de ventana
+    // Obtener window y renderer del contexto del registry (sin globals)
+    auto& ctx = reg.ctx();
     int w = 1, h = 1;
-    SDL_GetWindowSize(g_window, &w, &h);
+    SDL_GetWindowSize(ctx.window, &w, &h);
 
-    auto& r = eng::Renderer2D::instance();
+    auto& r = *ctx.renderer;
     r.beginFrame(w, h);
 
-    // Cámara: centrada en el player si existe
+    // Camara: centrada en el player si existe
     glm::vec2 cam{0,0};
     {
         auto pv = reg.view<PlayerTag, Transform2D>();

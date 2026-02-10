@@ -9,11 +9,12 @@ add_library(engine STATIC
     src/Time.cpp
     src/Input.cpp
     src/ecs/Registry.cpp
-    src/ecs/DemoWorld.cpp
     src/ecs/SystemScheduler.cpp
     src/ecs/systems/InputSystem.cpp
     src/ecs/systems/PlayerControlSystem.cpp
+    src/ecs/systems/MovementSystem.cpp
     src/ecs/systems/RenderSystem.cpp
+    src/ecs/systems/DebugUISystem.cpp
     src/render/Renderer2D.cpp
 
     # ImGui core (vendorizado)
@@ -33,8 +34,8 @@ target_include_directories(engine PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Includes de ImGui (PRIVATE: solo el engine los necesita internamente)
-target_include_directories(engine PRIVATE
+# Includes de ImGui (PUBLIC: DebugUISystem y otros sistemas del engine necesitan imgui.h)
+target_include_directories(engine PUBLIC
     ${ENGINE_ROOT}/external/imgui
     ${ENGINE_ROOT}/external/imgui/backends
 )

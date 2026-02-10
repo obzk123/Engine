@@ -12,11 +12,32 @@
 #include <initializer_list>
 #include <limits>
 
+// Forward declarations para EngineContext (evitamos incluir headers pesados).
+struct SDL_Window;
+namespace eng { class Renderer2D; class Profiler; }
+namespace eng::ecs { class SystemScheduler; }
+
 namespace eng::ecs {
+
+/// Contexto del motor accesible desde cualquier sistema via Registry::ctx().
+/// Patron inspirado en entt::registry::ctx — almacena punteros a los
+/// subsistemas principales del engine para que los sistemas puedan
+/// acceder a ellos sin globals.
+struct EngineContext {
+    SDL_Window*       window    = nullptr;
+    Renderer2D*       renderer  = nullptr;
+    Profiler*         profiler  = nullptr;
+    SystemScheduler*  scheduler = nullptr;
+};
 
 class Registry {
 public:
     Registry() = default;
+
+    // ── Context (acceso a subsistemas del motor) ────────────────
+    void setContext(const EngineContext& ctx) { m_ctx = ctx; }
+    EngineContext&       ctx()       { return m_ctx; }
+    const EngineContext& ctx() const { return m_ctx; }
 
     Entity create();
     void destroy(Entity e);
@@ -190,6 +211,8 @@ private:
         uint32_t generation = 0;
         bool alive = false;
     };
+
+    EngineContext m_ctx;
 
     std::vector<Slot> m_slots;
     std::vector<uint32_t> m_freeList;

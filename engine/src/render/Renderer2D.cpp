@@ -13,11 +13,6 @@
 
 namespace eng {
 
-Renderer2D& Renderer2D::instance() {
-    static Renderer2D r;
-    return r;
-}
-
 static const char* kVS = R"(
 #version 330 core
 layout(location=0) in vec2 aPos;
