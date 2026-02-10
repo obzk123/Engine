@@ -3,6 +3,7 @@
 #include "engine/ecs/SystemScheduler.h"
 #include "engine/Profiling.h"
 #include "engine/render/Renderer2D.h"
+#include "engine/render/TextureManager.h"
 
 #include <SDL.h>
 
@@ -19,6 +20,7 @@ public:
     ecs::Registry&        registry()  { return m_registry; }
     ecs::SystemScheduler& scheduler() { return m_scheduler; }
     Renderer2D&           renderer()  { return m_renderer; }
+    TextureManager&       textures()  { return m_texManager; }
     Profiler&             profiler()  { return m_profiler; }
 
 private:
@@ -30,6 +32,7 @@ private:
     ecs::SystemScheduler m_scheduler{m_profiler};
     ecs::Registry        m_registry;
     Renderer2D           m_renderer;
+    TextureManager       m_texManager;
 };
 
 } // namespace eng

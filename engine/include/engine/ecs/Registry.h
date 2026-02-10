@@ -14,7 +14,7 @@
 
 // Forward declarations para EngineContext (evitamos incluir headers pesados).
 struct SDL_Window;
-namespace eng { class Renderer2D; class Profiler; }
+namespace eng { class Renderer2D; class Profiler; class TextureManager; }
 namespace eng::ecs { class SystemScheduler; }
 
 namespace eng::ecs {
@@ -28,6 +28,7 @@ struct EngineContext {
     Renderer2D*       renderer  = nullptr;
     Profiler*         profiler  = nullptr;
     SystemScheduler*  scheduler = nullptr;
+    TextureManager*   textures  = nullptr;
 };
 
 class Registry {

@@ -46,19 +46,22 @@ int main(int, char**) {
         v.velocity = { 1.0f, 0.0f };
     }
 
-    // ── Crear player ──
+    // ── Crear player (con Sprite texturizado) ──
     auto player = reg.create();
     reg.emplace<eng::ecs::PlayerTag>(player);
     auto& pt = reg.emplace<eng::ecs::Transform2D>(player);
     auto& pv = reg.emplace<eng::ecs::Velocity2D>(player);
-    auto& rq = reg.emplace<eng::ecs::RenderQuad>(player);
-    rq.w = 1.0f;
-    rq.h = 1.0f;
-    rq.color = { 0.2f, 1.0f, 0.2f, 1.0f };
-    rq.layer = 1;
-    pt.position    = { 0.0f, 0.0f };
-    pt.prevPosition = { 0.0f, 0.0f };
-    pv.velocity    = { 0.0f, 0.0f };
+
+    auto& spr = reg.emplace<eng::ecs::Sprite>(player);
+    spr.texture = engine.textures().load("demo/assets/player.png");
+    spr.width   = 1.0f;
+    spr.height  = 1.0f;
+    spr.tint    = {1.0f, 1.0f, 1.0f, 1.0f};   // sin tinteo
+    spr.layer   = 1;
+
+    pt.position     = {0.0f, 0.0f};
+    pt.prevPosition = {0.0f, 0.0f};
+    pv.velocity     = {0.0f, 0.0f};
 
     // ── Registrar sistemas ──
     using Phase = eng::ecs::Phase;

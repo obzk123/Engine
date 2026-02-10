@@ -65,12 +65,13 @@ bool Engine::init() {
     eng::Time::init();
     eng::Input::init();
 
-    // Inicializar renderer
+    // Inicializar renderer y texture manager
     m_renderer.init();
+    m_texManager.init();
 
     // Setear el contexto en el registry para que los sistemas puedan
-    // acceder a window, renderer, profiler y scheduler sin globals.
-    m_registry.setContext({m_window, &m_renderer, &m_profiler, &m_scheduler});
+    // acceder a window, renderer, profiler, scheduler y textures sin globals.
+    m_registry.setContext({m_window, &m_renderer, &m_profiler, &m_scheduler, &m_texManager});
 
     m_running = true;
     return true;
@@ -132,6 +133,7 @@ void Engine::run() {
 void Engine::shutdown() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
+    m_texManager.shutdown();
     m_renderer.shutdown();
     ImGui::DestroyContext();
     if (m_glContext) {
