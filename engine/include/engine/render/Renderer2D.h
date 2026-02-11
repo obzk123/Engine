@@ -35,7 +35,7 @@ private:
         float x, y;
         float r, g, b, a;
         float u, v;
-        float texIndex;
+        int   texIndex;   // entero puro → viaja sin conversión float
     };
 
     // ── Texture slot management ──
@@ -66,7 +66,7 @@ private:
 
     /// Encuentra o asigna un slot de textura para el GL ID dado.
     /// Si los slots estan llenos, hace un flush intermedio y resetea.
-    float getTextureSlot(uint32_t glTexId);
+    int getTextureSlot(uint32_t glTexId);
 
     /// Flush interno (no resetea camera/screen).
     void flushBatch();

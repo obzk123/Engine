@@ -1,4 +1,5 @@
 #include "engine/ecs/systems/RenderSystem.h"
+#include "engine/ecs/systems/TilemapRenderSystem.h"
 #include "engine/ecs/Components.h"
 #include "engine/render/Renderer2D.h"
 #include "engine/render/TextureManager.h"
@@ -34,32 +35,33 @@ void RenderSystem(Registry& reg, float alpha) {
     }
     r.setCamera(cam, 64.0f);
 
-    // ── Capa 0: grilla de debug y marcador de origen ──
-    r.submitQuad({0.0f, 0.0f}, 0.2f, 0.2f, {1.0f, 0.0f, 0.0f, 1.0f});
-    for (int i = -10; i <= 10; ++i) {
-        r.submitQuad({(float)i, 0.0f}, 0.03f, 25.0f, {0.2f, 0.2f, 0.2f, 0.6f});
-        r.submitQuad({0.0f, (float)i}, 25.0f, 0.03f, {0.2f, 0.2f, 0.2f, 0.6f});
-    }
-
-    // Dibujar todos los RenderQuad (quads de color solido)
     auto view = reg.view<Transform2D, RenderQuad>();
     for (auto [e, t, rq] : view) {
         glm::vec2 renderPos = lerpVec2(t.prevPosition, t.position, alpha);
         r.submitQuad({renderPos.x, renderPos.y}, rq.w, rq.h, rq.color);
     }
-
-    // Flush quads de color antes de dibujar sprites texturizados.
-    // Esto evita artefactos de blending entre la textura dummy blanca
-    // (usada por submitQuad) y las texturas reales en el mismo batch.
     r.flush();
+
+    // ── Tilemap (entre quads de color y sprites) ──
+    TilemapRenderSystem(reg, alpha, cam, w, h);
 
     // ── Capa 1: sprites texturizados ──
     auto spriteView = reg.view<Transform2D, Sprite>();
     for (auto [e, t, spr] : spriteView) {
         glm::vec2 renderPos = lerpVec2(t.prevPosition, t.position, alpha);
         uint32_t glId = ctx.textures->glId(spr.texture);
+
+        eng::Rect uv = spr.uvRect;
+        if (spr.flipX) {
+            // Invertir horizontalmente: mover x al borde derecho y hacer w negativo.
+            // submitTexturedQuad usa u0=uv.x, u1=uv.x+uv.w, asi que con w negativo
+            // u0 > u1 y la GPU dibuja la textura espejada.
+            uv.x = uv.x + uv.w;
+            uv.w = -uv.w;
+        }
+
         r.submitTexturedQuad(renderPos, spr.width, spr.height,
-                             glId, spr.uvRect, spr.tint);
+                             glId, uv, spr.tint);
     }
 
     r.flush();

@@ -16,6 +16,7 @@ add_library(engine STATIC
     src/ecs/systems/RenderSystem.cpp
     src/ecs/systems/DebugUISystem.cpp
     src/ecs/systems/AnimationSystem.cpp
+    src/ecs/systems/TilemapRenderSystem.cpp
     src/render/Renderer2D.cpp
     src/render/TextureManager.cpp
 

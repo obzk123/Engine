@@ -23,11 +23,11 @@ static const char* kVS = R"(
 layout(location=0) in vec2 aPos;
 layout(location=1) in vec4 aColor;
 layout(location=2) in vec2 aTexCoord;
-layout(location=3) in float aTexIndex;
+layout(location=3) in int  aTexIndex;
 
 out vec4 vColor;
 out vec2 vTexCoord;
-flat out float vTexIndex;
+flat out int vTexIndex;
 
 uniform vec2 uScreenSize; // pixels
 
@@ -48,18 +48,36 @@ static const char* kFS = R"(
 #version 330 core
 in vec4 vColor;
 in vec2 vTexCoord;
-flat in float vTexIndex;
+flat in int vTexIndex;
 
 out vec4 FragColor;
 
 uniform sampler2D uTextures[16];
 
 void main() {
-    // Samplear la textura del slot indicado y multiplicar por el color.
-    // Si es la textura dummy blanca (1x1), el resultado es solo el color.
-    // Si el color es blanco, el resultado es solo la textura.
-    int idx = int(round(vTexIndex));
-    vec4 texColor = texture(uTextures[idx], vTexCoord);
+    // Indexar sampler arrays con una variable no-constante es undefined behavior
+    // en GLSL 330 (algunos drivers lo permiten, otros no). Usamos un switch
+    // explicito que el compilador puede optimizar a una tabla de saltos.
+    vec4 texColor;
+    switch (vTexIndex) {
+        case  0: texColor = texture(uTextures[ 0], vTexCoord); break;
+        case  1: texColor = texture(uTextures[ 1], vTexCoord); break;
+        case  2: texColor = texture(uTextures[ 2], vTexCoord); break;
+        case  3: texColor = texture(uTextures[ 3], vTexCoord); break;
+        case  4: texColor = texture(uTextures[ 4], vTexCoord); break;
+        case  5: texColor = texture(uTextures[ 5], vTexCoord); break;
+        case  6: texColor = texture(uTextures[ 6], vTexCoord); break;
+        case  7: texColor = texture(uTextures[ 7], vTexCoord); break;
+        case  8: texColor = texture(uTextures[ 8], vTexCoord); break;
+        case  9: texColor = texture(uTextures[ 9], vTexCoord); break;
+        case 10: texColor = texture(uTextures[10], vTexCoord); break;
+        case 11: texColor = texture(uTextures[11], vTexCoord); break;
+        case 12: texColor = texture(uTextures[12], vTexCoord); break;
+        case 13: texColor = texture(uTextures[13], vTexCoord); break;
+        case 14: texColor = texture(uTextures[14], vTexCoord); break;
+        case 15: texColor = texture(uTextures[15], vTexCoord); break;
+        default: texColor = texture(uTextures[ 0], vTexCoord); break;
+    }
     FragColor = texColor * vColor;
 }
 )";
@@ -161,10 +179,10 @@ void Renderer2D::init() {
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                           (void*)offsetof(Vertex, u));
 
-    // location 3: texIndex
+    // location 3: texIndex (entero — usa IPointer, no la version float)
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                          (void*)offsetof(Vertex, texIndex));
+    glVertexAttribIPointer(3, 1, GL_INT, sizeof(Vertex),
+                           (void*)offsetof(Vertex, texIndex));
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -219,11 +237,11 @@ void Renderer2D::setCamera(glm::vec2 centerWorld, float pixelsPerUnit) {
 // Texture slot management
 // ────────────────────────────────────────────────────────────────
 
-float Renderer2D::getTextureSlot(uint32_t glTexId) {
+int Renderer2D::getTextureSlot(uint32_t glTexId) {
     // Buscar si ya esta en los slots activos
     for (int i = 0; i < m_textureSlotCount; ++i) {
         if (m_textureSlots[i] == glTexId) {
-            return (float)i;
+            return i;
         }
     }
 
@@ -236,14 +254,14 @@ float Renderer2D::getTextureSlot(uint32_t glTexId) {
         m_textureSlotCount = 1;
 
         // Si la textura que busco es la white, retornar 0
-        if (glTexId == m_whiteTexture) return 0.0f;
+        if (glTexId == m_whiteTexture) return 0;
     }
 
     // Asignar nuevo slot
     int slot = m_textureSlotCount;
     m_textureSlots[slot] = glTexId;
     m_textureSlotCount++;
-    return (float)slot;
+    return slot;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -260,22 +278,24 @@ void Renderer2D::submitQuad(glm::vec2 centerWorld, float wWorld, float hWorld,
 void Renderer2D::submitTexturedQuad(glm::vec2 centerWorld, float wWorld, float hWorld,
                                      uint32_t glTexId, const Rect& uv,
                                      eng::ecs::Color4 tint) {
-    float texIdx = getTextureSlot(glTexId);
+    int texIdx = getTextureSlot(glTexId);
 
     // World -> Screen(pixels)
     const float cx = (centerWorld.x - m_camCenter.x) * m_ppu + (float)m_screenW * 0.5f;
     const float cy = (centerWorld.y - m_camCenter.y) * m_ppu + (float)m_screenH * 0.5f;
 
-    const float hw = (wWorld * m_ppu) * 0.5f;
-    const float hh = (hWorld * m_ppu) * 0.5f;
+    // Tamano del quad en pixeles (redondeado a entero para mapeo 1:1 de texels)
+    const float pw = std::round(wWorld * m_ppu);
+    const float ph = std::round(hWorld * m_ppu);
 
-    // Pixel-snap: redondear las ESQUINAS a pixel entero.
-    // Esto garantiza que cada texel mapea exactamente a un numero entero de
-    // pixeles de pantalla, evitando artefactos con GL_NEAREST.
-    const float x0 = std::floor(cx - hw);
-    const float y0 = std::floor(cy - hh);
-    const float x1 = std::floor(cx + hw);
-    const float y1 = std::floor(cy + hh);
+    // Pixel-snap: redondear la esquina top-left a pixel entero
+    // y calcular la otra esquina sumando el tamano exacto.
+    // Esto garantiza que el quad siempre tiene el tamano correcto en pixeles,
+    // evitando que GL_NEAREST samplee texels del frame vecino.
+    const float x0 = std::floor(cx - pw * 0.5f);
+    const float y0 = std::floor(cy - ph * 0.5f);
+    const float x1 = x0 + pw;
+    const float y1 = y0 + ph;
 
     // UV corners
     const float u0 = uv.x;

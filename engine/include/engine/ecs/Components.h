@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "engine/render/Texture.h"
+#include "engine/render/Tileset.h"
 
 namespace eng::ecs {
 
@@ -43,6 +44,7 @@ struct Sprite {
     int                layer    = 0;      // orden de dibujo
     float              width    = 1.0f;   // tamano en world units
     float              height   = 1.0f;   // tamano en world units
+    bool               flipX   = false;   // espejado horizontal
 };
 
 /// Clip de animacion: una secuencia de frames UV dentro de un sprite sheet.
@@ -60,6 +62,23 @@ struct SpriteAnimator {
     int currentFrame = 0;
     float timer = 0.0f;
     bool playing = true;
+};
+
+/// Capa de tiles. Grilla flat row-major: tiles[row * width + col].
+/// Tile index 0 = celda vacia (no se dibuja).
+struct TilemapLayer {
+    std::vector<uint16_t> tiles;   // indices de tiles (0 = vacio)
+    int renderOrder = 0;           // orden de dibujo (menor = mas atras)
+};
+
+/// Tilemap: mapa de tiles multi-capa con tamano fijo.
+/// La entidad tambien necesita Transform2D cuya position = esquina top-left del mapa.
+/// Cada tile ocupa 1.0 x 1.0 world units.
+struct Tilemap {
+    eng::Tileset tileset;                  // sprite sheet de tiles
+    int width  = 0;                        // ancho del mapa en tiles
+    int height = 0;                        // alto del mapa en tiles
+    std::vector<TilemapLayer> layers;      // capas ordenadas por renderOrder
 };
 
 } // namespace eng::ecs

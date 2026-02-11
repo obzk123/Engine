@@ -32,10 +32,11 @@ void PlayerControlSystem(Registry& reg, float /*fixedDt*/) {
 
         vel.velocity = { x * speed, y * speed };
 
-        // ── Cambiar clip de animacion segun direccion ──
+        // ── Cambiar clip de animacion y flipX segun direccion ──
         // Clips: 0=idle, 1=walk_down, 2=walk_up, 3=walk_side
-        if (reg.has<SpriteAnimator>(e)) {
+        if (reg.has<SpriteAnimator>(e) && reg.has<Sprite>(e)) {
             auto& animator = reg.get<SpriteAnimator>(e);
+            auto& sprite   = reg.get<Sprite>(e);
             int newClip = 0; // idle por defecto
 
             if (len2 > 0.0f) {
@@ -48,6 +49,11 @@ void PlayerControlSystem(Registry& reg, float /*fixedDt*/) {
                     newClip = 3; // walk_side
                 }
             }
+
+            // FlipX: espejado horizontal cuando va a la izquierda
+            if (x < 0.0f)      sprite.flipX = true;
+            else if (x > 0.0f) sprite.flipX = false;
+            // Si x == 0 (solo vertical), mantiene el ultimo flip
 
             if (newClip != animator.currentClip) {
                 animator.currentClip  = newClip;
