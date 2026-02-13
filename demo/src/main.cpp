@@ -9,6 +9,7 @@
 #include "engine/ecs/systems/RenderSystem.h"
 #include "engine/ecs/systems/DebugUISystem.h"
 #include "engine/ecs/systems/AnimationSystem.h"
+#include "engine/ecs/systems/CollisionSystem.h"
 #include <SDL.h>
 
 // ─────────────────────────────────────────────────────────────
@@ -131,6 +132,15 @@ static void makeStaticSprite(eng::ecs::Registry& reg, eng::TextureHandle tex,
     s.width   = w;
     s.height  = h;
     s.layer   = layer;
+
+    // Collider en la base del objeto (ej: tronco del arbol, puerta de la casa).
+    // Cubre ~40% del ancho y ~20% del alto, centrado abajo.
+    auto& c     = reg.emplace<eng::ecs::BoxCollision>(e);
+    c.width     = w * 0.4f;
+    c.height    = h * 0.2f;
+    c.offsetX   = 0.0f;
+    c.offsetY   = h * 0.4f;   // empuja hacia la base
+    c.isSolid   = true;
 }
 
 // Helper: crea un NPC animado
@@ -147,6 +157,14 @@ static void makeAnimatedNPC(eng::ecs::Registry& reg, eng::TextureHandle tex,
     s.width   = 2.0f;
     s.height  = 2.0f;
     s.layer   = 1;
+
+    // Collider en los pies del NPC, mas chico que el sprite visual.
+    auto& c     = reg.emplace<eng::ecs::BoxCollision>(e);
+    c.width     = 0.8f;
+    c.height    = 0.5f;
+    c.offsetX   = 0.0f;
+    c.offsetY   = 0.5f;
+    c.isSolid   = true;
 
     auto& a = reg.emplace<eng::ecs::SpriteAnimator>(e);
     a.clips.push_back({"idle", eng::framesFromGrid(cols, rows, 0), frameDur, true});
@@ -257,6 +275,15 @@ int main(int, char**) {
     anim.clips.push_back({"walk_up",   eng::framesFromGrid(6, 10, 5), 0.12f, true});
     anim.clips.push_back({"walk_side", eng::framesFromGrid(6, 10, 4), 0.12f, true});
 
+    // Collider chico en los pies del personaje.
+    // offset (0, +0.6) lo baja desde el centro del sprite hacia los pies.
+    auto& cl = reg.emplace<eng::ecs::BoxCollision>(player);
+    cl.width    = 0.6f;
+    cl.height   = 0.4f;
+    cl.offsetX  = 0.0f;
+    cl.offsetY  = 0.6f;
+    cl.isSolid  = true;
+
     // ================================================================
     // CARGAR TEXTURAS DE OBJETOS GRANDES
     // ================================================================
@@ -291,6 +318,7 @@ int main(int, char**) {
     // ── Árboles chicos dispersos ──
     // Oak_Tree_Small = 96x48 pero tiene 2 arbolitos, usamos UV parcial
     // Arbol izquierdo: primeros ~32x48px aprox
+    //Sin colision, tengo que ver si son arbustos.
     {
         auto e = reg.create();
         auto& t = reg.emplace<eng::ecs::Transform2D>(e);
@@ -306,7 +334,7 @@ int main(int, char**) {
         t.position = {-5.0f, -11.0f}; t.prevPosition = t.position;
         auto& s = reg.emplace<eng::ecs::Sprite>(e);
         s.texture = texTreeS;
-        s.uvRect = {0.33f, 0.0f, 0.67f, 1.0f}; // segundo arbolito
+        s.uvRect = {0.33f, 0.0f, 0.33f, 1.0f}; // segundo arbolito (w=0.33, no 0.67)
         s.width = 4.0f; s.height = 3.0f; s.layer = 1;
     }
 
@@ -521,6 +549,23 @@ int main(int, char**) {
     tm.layers.push_back(std::move(decor));
 
     // ================================================================
+    // TILE COLLISION LAYER
+    // ================================================================
+    // Marcar tiles solidos: agua y cliff bloquean el paso.
+    // Recorremos la capa de terreno (layer 1) y marcamos como solido
+    // cualquier tile que sea agua (31-48) o cliff (49-66).
+    auto& tcl = reg.emplace<eng::ecs::TileCollisionLayer>(tilemapEnt);
+    tcl.solid.resize(MW * MH, false);
+    const auto& terrainTiles = tm.layers[1].tiles; // capa de terreno
+    for (int i = 0; i < MW * MH; ++i) {
+        uint16_t id = terrainTiles[i];
+        // Agua: tiles 31-48
+        if (id >= 31 && id <= 48) tcl.solid[i] = true;
+        // Cliff: tiles 49-66
+        if (id >= 49 && id <= 66) tcl.solid[i] = true;
+    }
+
+    // ================================================================
     // REGISTRAR SISTEMAS
     // ================================================================
     using Phase = eng::ecs::Phase;
@@ -530,6 +575,8 @@ int main(int, char**) {
                     eng::ecs::systems::PlayerControlSystem);
     sched.addSystem("MovementSystem",      Phase::FixedUpdate, 200,
                     eng::ecs::systems::MovementSystem);
+    sched.addSystem("CollisionSystem",     Phase::FixedUpdate, 250,
+                    eng::ecs::systems::CollisionSystem);
     sched.addSystem("DebugUISystem",       Phase::Update,      900,
                     eng::ecs::systems::DebugUISystem);
     sched.addSystem("RenderSystem",        Phase::Render,      100,

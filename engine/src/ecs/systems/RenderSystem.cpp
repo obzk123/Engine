@@ -3,16 +3,16 @@
 #include "engine/ecs/Components.h"
 #include "engine/render/Renderer2D.h"
 #include "engine/render/TextureManager.h"
+#include "engine/Math.h"
 
 #include <SDL.h>
+#include <vector>
+#include <algorithm>
 
 namespace eng::ecs::systems {
 
-static float lerp(float a, float b, float t) { return a + (b - a) * t; }
-
-static glm::vec2 lerpVec2(const glm::vec2& a, const glm::vec2& b, float t) {
-    return { lerp(a.x, b.x, t), lerp(a.y, b.y, t) };
-}
+using eng::lerp;
+using eng::lerpVec2;
 
 void RenderSystem(Registry& reg, float alpha) {
     // Obtener window y renderer del contexto del registry (sin globals)
@@ -33,7 +33,8 @@ void RenderSystem(Registry& reg, float alpha) {
             break;
         }
     }
-    r.setCamera(cam, 64.0f);
+    constexpr float kPPU = 64.0f;
+    r.setCamera(cam, kPPU);
 
     auto view = reg.view<Transform2D, RenderQuad>();
     for (auto [e, t, rq] : view) {
@@ -43,9 +44,21 @@ void RenderSystem(Registry& reg, float alpha) {
     r.flush();
 
     // ── Tilemap (entre quads de color y sprites) ──
-    TilemapRenderSystem(reg, alpha, cam, w, h);
+    TilemapRenderSystem(reg, alpha, cam, w, h, kPPU);
 
-    // ── Capa 1: sprites texturizados ──
+    // ── Capa 1: sprites texturizados (Y-sorted para profundidad) ──
+    // Recolectar sprites con su sortY (borde inferior = pies).
+    // Entidades con Y mayor (mas abajo en pantalla) se dibujan despues (encima).
+    struct SpriteEntry {
+        float      sortY;      // Y del borde inferior del sprite (los "pies")
+        glm::vec2  renderPos;
+        uint32_t   glId;
+        eng::Rect  uv;
+        float      width, height;
+        eng::ecs::Color4 tint;
+    };
+    std::vector<SpriteEntry> spriteEntries;
+
     auto spriteView = reg.view<Transform2D, Sprite>();
     for (auto [e, t, spr] : spriteView) {
         glm::vec2 renderPos = lerpVec2(t.prevPosition, t.position, alpha);
@@ -53,15 +66,26 @@ void RenderSystem(Registry& reg, float alpha) {
 
         eng::Rect uv = spr.uvRect;
         if (spr.flipX) {
-            // Invertir horizontalmente: mover x al borde derecho y hacer w negativo.
-            // submitTexturedQuad usa u0=uv.x, u1=uv.x+uv.w, asi que con w negativo
-            // u0 > u1 y la GPU dibuja la textura espejada.
             uv.x = uv.x + uv.w;
             uv.w = -uv.w;
         }
 
-        r.submitTexturedQuad(renderPos, spr.width, spr.height,
-                             glId, uv, spr.tint);
+        // sortY = borde inferior del sprite (centro + mitad de altura)
+        float sortY = renderPos.y + spr.height * 0.5f;
+
+        spriteEntries.push_back({sortY, renderPos, glId, uv,
+                                 spr.width, spr.height, spr.tint});
+    }
+
+    // Ordenar: menor Y primero (mas lejos), mayor Y despues (mas cerca, se dibuja encima)
+    std::sort(spriteEntries.begin(), spriteEntries.end(),
+              [](const SpriteEntry& a, const SpriteEntry& b) {
+                  return a.sortY < b.sortY;
+              });
+
+    for (const auto& se : spriteEntries) {
+        r.submitTexturedQuad(se.renderPos, se.width, se.height,
+                             se.glId, se.uv, se.tint);
     }
 
     r.flush();

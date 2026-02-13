@@ -12,7 +12,9 @@ namespace eng::ecs::systems {
 ///   alpha        - interpolacion entre frames (0-1)
 ///   camCenter    - posicion de la camara en world coords
 ///   screenW/H    - tamano de la ventana en pixeles
+///   ppu          - pixeles por world unit (debe coincidir con setCamera)
 void TilemapRenderSystem(Registry& reg, float alpha,
-                         glm::vec2 camCenter, int screenW, int screenH);
+                         glm::vec2 camCenter, int screenW, int screenH,
+                         float ppu);
 
 } // namespace eng::ecs::systems

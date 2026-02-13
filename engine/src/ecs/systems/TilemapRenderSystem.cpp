@@ -2,24 +2,20 @@
 #include "engine/ecs/Components.h"
 #include "engine/render/Renderer2D.h"
 #include "engine/render/TextureManager.h"
+#include "engine/Math.h"
 
 #include <algorithm>
 
 namespace eng::ecs::systems {
 
-static float lerp(float a, float b, float t) { return a + (b - a) * t; }
-
-static glm::vec2 lerpVec2(const glm::vec2& a, const glm::vec2& b, float t) {
-    return { lerp(a.x, b.x, t), lerp(a.y, b.y, t) };
-}
+using eng::lerp;
+using eng::lerpVec2;
 
 void TilemapRenderSystem(Registry& reg, float alpha,
-                         glm::vec2 camCenter, int screenW, int screenH) {
+                         glm::vec2 camCenter, int screenW, int screenH,
+                         float ppu) {
     auto& ctx = reg.ctx();
     auto& r   = *ctx.renderer;
-
-    // Calcular area visible en world units
-    const float ppu = 64.0f;
     const float worldW = static_cast<float>(screenW) / ppu;
     const float worldH = static_cast<float>(screenH) / ppu;
 

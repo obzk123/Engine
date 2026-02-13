@@ -81,4 +81,15 @@ struct Tilemap {
     std::vector<TilemapLayer> layers;      // capas ordenadas por renderOrder
 };
 
+struct BoxCollision {
+    float           width   = 0.0f;
+    float           height  = 0.0f;
+    float           offsetX = 0.0f;
+    float           offsetY = 0.0f;
+    bool            isSolid = false;
+};
+
+struct TileCollisionLayer {
+    std::vector<bool> solid;
+};
 } // namespace eng::ecs
