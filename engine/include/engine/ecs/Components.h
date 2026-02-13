@@ -92,4 +92,14 @@ struct BoxCollision {
 struct TileCollisionLayer {
     std::vector<bool> solid;
 };
+
+struct Camera {
+    glm::vec2   position {0.0f, 0.0f};
+    float       smoothSpeed = 5.0f;    // mayor = mas rapido (1=lento, 10=rapido)
+    // Limites del mapa en world coords (la camara no sale de aca)
+    float       mapLeft   = 0.0f;
+    float       mapRight  = 0.0f;
+    float       mapTop    = 0.0f;
+    float       mapBottom = 0.0f;
+};
 } // namespace eng::ecs

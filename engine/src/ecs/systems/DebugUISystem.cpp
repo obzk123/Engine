@@ -88,10 +88,10 @@ void DebugUISystem(Registry& reg, float /*dt*/) {
     // Player position
     ImGui::Separator();
     auto view = reg.view<PlayerTag, Transform2D>();
-    for (auto [e, tag, t] : view) {
-        (void)tag;
+    if (view.valid()) {
+        auto [e, tag, t] = *view.begin();
+        (void)e; (void)tag;
         ImGui::Text("Player pos: (%.2f, %.2f)", t.position.x, t.position.y);
-        break;
     }
 
     // Interpolation / accumulator

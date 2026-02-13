@@ -198,12 +198,12 @@ void CollisionSystem(Registry& reg, float /*dt*/) {
     TileCollisionLayer* tclPtr = nullptr;
     {
         auto tmView = reg.view<Transform2D, Tilemap, TileCollisionLayer>();
-        for (auto [e, t, tm, tcl] : tmView) {
+        if (tmView.valid()) {
+            auto [e, t, tm, tcl] = *tmView.begin();
             (void)e;
             tmTransform = &t;
             tmPtr       = &tm;
             tclPtr      = &tcl;
-            break; // solo soportamos 1 tilemap
         }
     }
 

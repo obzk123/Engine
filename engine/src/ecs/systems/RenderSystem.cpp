@@ -23,28 +23,26 @@ void RenderSystem(Registry& reg, float alpha) {
     auto& r = *ctx.renderer;
     r.beginFrame(w, h);
 
-    // Camara: centrada en el player si existe
-    glm::vec2 cam{0,0};
-    {
-        auto pv = reg.view<PlayerTag, Transform2D>();
-        for (auto [e, tag, t] : pv) {
-            (void)e; (void)tag;
-            cam = lerpVec2(t.prevPosition, t.position, alpha);
-            break;
-        }
-    }
-    constexpr float kPPU = 64.0f;
-    r.setCamera(cam, kPPU);
-
     auto view = reg.view<Transform2D, RenderQuad>();
     for (auto [e, t, rq] : view) {
         glm::vec2 renderPos = lerpVec2(t.prevPosition, t.position, alpha);
         r.submitQuad({renderPos.x, renderPos.y}, rq.w, rq.h, rq.color);
     }
     r.flush();
+    // Leer posicion de la camara (ya actualizada por CameraSystem)
+    constexpr float kPPU = 64.0f;
+    glm::vec2 camPos{0.0f, 0.0f};
+    {
+        auto camView = reg.view<Camera>();
+        if (camView.valid()) {
+            auto [e, cam] = *camView.begin();
+            (void)e;
+            camPos = cam.position;
+        }
+    }
 
     // ── Tilemap (entre quads de color y sprites) ──
-    TilemapRenderSystem(reg, alpha, cam, w, h, kPPU);
+    TilemapRenderSystem(reg, alpha, camPos, w, h, kPPU);
 
     // ── Capa 1: sprites texturizados (Y-sorted para profundidad) ──
     // Recolectar sprites con su sortY (borde inferior = pies).

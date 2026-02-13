@@ -10,6 +10,7 @@
 #include "engine/ecs/systems/DebugUISystem.h"
 #include "engine/ecs/systems/AnimationSystem.h"
 #include "engine/ecs/systems/CollisionSystem.h"
+#include "engine/ecs/systems/CameraSystem.h"
 #include <SDL.h>
 
 // ─────────────────────────────────────────────────────────────
@@ -170,15 +171,6 @@ static void makeAnimatedNPC(eng::ecs::Registry& reg, eng::TextureHandle tex,
     a.clips.push_back({"idle", eng::framesFromGrid(cols, rows, 0), frameDur, true});
 }
 
-// Helper: rellena un rectangulo de tiles en la capa
-static void fillRect(std::vector<uint16_t>& tiles, int mapW,
-                     int x, int y, int w, int h, uint16_t id) {
-    for (int r = y; r < y + h; ++r)
-        for (int c = x; c < x + w; ++c)
-            if (c >= 0 && c < mapW && r >= 0)
-                tiles[r * mapW + c] = id;
-}
-
 // Helper: dibuja un borde de agua (rectángulo con bordes)
 static void makeWaterRect(std::vector<uint16_t>& tiles, int mapW,
                           int x, int y, int w, int h) {
@@ -283,6 +275,17 @@ int main(int, char**) {
     cl.offsetX  = 0.0f;
     cl.offsetY  = 0.6f;
     cl.isSolid  = true;
+
+    // Camara: entidad separada con limites del mapa.
+    // El mapa va de (-MW/2, -MH/2) a (+MW/2, +MH/2) en world coords.
+    auto camEnt = reg.create();
+    auto& camera = reg.emplace<eng::ecs::Camera>(camEnt);
+    camera.position    = pt.position;
+    camera.smoothSpeed = 3.0f;         // ajustar al gusto (1=muy lento, 10=rapido)
+    camera.mapLeft     = -(float)MW / 2.0f;
+    camera.mapRight    =  (float)MW / 2.0f;
+    camera.mapTop      = -(float)MH / 2.0f;
+    camera.mapBottom   =  (float)MH / 2.0f;
 
     // ================================================================
     // CARGAR TEXTURAS DE OBJETOS GRANDES
@@ -569,21 +572,14 @@ int main(int, char**) {
     // REGISTRAR SISTEMAS
     // ================================================================
     using Phase = eng::ecs::Phase;
-    sched.addSystem("InputSystem",         Phase::Update,      10,
-                    eng::ecs::systems::InputSystem);
-    sched.addSystem("PlayerControlSystem", Phase::FixedUpdate, 150,
-                    eng::ecs::systems::PlayerControlSystem);
-    sched.addSystem("MovementSystem",      Phase::FixedUpdate, 200,
-                    eng::ecs::systems::MovementSystem);
-    sched.addSystem("CollisionSystem",     Phase::FixedUpdate, 250,
-                    eng::ecs::systems::CollisionSystem);
-    sched.addSystem("DebugUISystem",       Phase::Update,      900,
-                    eng::ecs::systems::DebugUISystem);
-    sched.addSystem("RenderSystem",        Phase::Render,      100,
-                    eng::ecs::systems::RenderSystem);
-    sched.addSystem("AnimationSystem",     Phase::Update,      300,
-                    eng::ecs::systems::AnimationSystem);
-
+    sched.addSystem("InputSystem",          Phase::Update,          10,     eng::ecs::systems::InputSystem);
+    sched.addSystem("PlayerControlSystem",  Phase::FixedUpdate,     150,    eng::ecs::systems::PlayerControlSystem);
+    sched.addSystem("MovementSystem",       Phase::FixedUpdate,     200,    eng::ecs::systems::MovementSystem);
+    sched.addSystem("CollisionSystem",      Phase::FixedUpdate,     250,    eng::ecs::systems::CollisionSystem);
+    sched.addSystem("AnimationSystem",      Phase::Update,          300,    eng::ecs::systems::AnimationSystem);
+    sched.addSystem("CameraSystem",         Phase::Render,          50,     eng::ecs::systems::CameraSystem);
+    sched.addSystem("RenderSystem",         Phase::Render,          100,    eng::ecs::systems::RenderSystem);
+    sched.addSystem("DebugUISystem",        Phase::Update,          900,    eng::ecs::systems::DebugUISystem);
     engine.run();
     engine.shutdown();
     return 0;
